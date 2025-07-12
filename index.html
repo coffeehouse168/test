@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拳王格斗游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(45deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 900px;
+            height: 600px;
+            max-width: 95vw;
+            max-height: 85vh;
+            background: linear-gradient(180deg, #87CEEB 0%, #32CD32 70%, #228B22 100%);
+            border: 5px solid #333;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .health-bars {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .health-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .player-name {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444 0%, #ffff44 50%, #44ff44 100%);
+            transition: width 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .vs-text {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .control-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .control-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffdd44;
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .control-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .game-over-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            z-index: 100;
+            display: none;
+        }
+
+        .game-over-modal.show {
+            display: block;
+        }
+
+        .game-over-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6b35, #ffdd44);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .restart-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                width: 100%;
+                height: 70vh;
+            }
+            
+            .controls {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                transform: none;
+            }
+            
+            .control-panel {
+                min-width: 150px;
+                padding: 10px;
+            }
+            
+            .health-bars {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" class="game-canvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="health-bars">
+                <div class="health-container">
+                    <div class="player-name">玩家1</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="player1Health" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="vs-text">VS</div>
+                <div class="health-container">
+                    <div class="player-name">玩家2</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="player2Health" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-panel">
+                <div class="control-title">玩家1 (蓝色)</div>
+                <div class="control-buttons">
+                    <button class="control-btn" onmousedown="startAction('player1', 'left')" onmouseup="stopAction('player1', 'left')">A - 左</button>
+                    <button class="control-btn" onmousedown="startAction('player1', 'jump')" onmouseup="stopAction('player1', 'jump')">W - 跳</button>
+                    <button class="control-btn" onmousedown="startAction('player1', 'right')" onmouseup="stopAction('player1', 'right')">D - 右</button>
+                    <button class="control-btn" onmousedown="startAction('player1', 'block')" onmouseup="stopAction('player1', 'block')">S - 防御</button>
+                    <button class="control-btn" onmousedown="startAction('player1', 'punch')" onmouseup="stopAction('player1', 'punch')">J - 拳</button>
+                    <button class="control-btn" onmousedown="startAction('player1', 'kick')" onmouseup="stopAction('player1', 'kick')">K - 踢</button>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <div class="control-title">玩家2 (红色)</div>
+                <div class="control-buttons">
+                    <button class="control-btn" onmousedown="startAction('player2', 'left')" onmouseup="stopAction('player2', 'left')">← 左</button>
+                    <button class="control-btn" onmousedown="startAction('player2', 'jump')" onmouseup="stopAction('player2', 'jump')">↑ 跳</button>
+                    <button class="control-btn" onmousedown="startAction('player2', 'right')" onmouseup="stopAction('player2', 'right')">→ 右</button>
+                    <button class="control-btn" onmousedown="startAction('player2', 'block')" onmouseup="stopAction('player2', 'block')">↓ 防御</button>
+                    <button class="control-btn" onmousedown="startAction('player2', 'punch')" onmouseup="stopAction('player2', 'punch')">1 - 拳</button>
+                    <button class="control-btn" onmousedown="startAction('player2', 'kick')" onmouseup="stopAction('player2', 'kick')">2 - 踢</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-over-modal" id="gameOverModal">
+            <div class="game-over-title" id="winnerText">获胜者！</div>
+            <button class="restart-btn" onclick="restartGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画布尺寸
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // 游戏状态
+        let gameRunning = true;
+        let keys = {};
+        let gameLoop;
+
+        // 玩家类
+        class Player {
+            constructor(x, y, color, controls) {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 80;
+                this.color = color;
+                this.controls = controls;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.isJumping = false;
+                this.isBlocking = false;
+                this.isAttacking = false;
+                this.attackCooldown = 0;
+                this.facingRight = true;
+                this.stunned = false;
+                this.stunTimer = 0;
+                this.attackBox = { x: 0, y: 0, width: 0, height: 0 };
+            }
+
+            update() {
+                if (this.stunned) {
+                    this.stunTimer--;
+                    if (this.stunTimer <= 0) {
+                        this.stunned = false;
+                    }
+                }
+
+                if (!this.stunned) {
+                    this.handleInput();
+                }
+
+                this.applyPhysics();
+                this.updateAttack();
+                this.updatePosition();
+            }
+
+            handleInput() {
+                const leftKey = this.controls.left;
+                const rightKey = this.controls.right;
+                const jumpKey = this.controls.jump;
+                const blockKey = this.controls.block;
+                const punchKey = this.controls.punch;
+                const kickKey = this.controls.kick;
+
+                // 移动
+                if (keys[leftKey]) {
+                    this.velocityX = -5;
+                    this.facingRight = false;
+                } else if (keys[rightKey]) {
+                    this.velocityX = 5;
+                    this.facingRight = true;
+                } else {
+                    this.velocityX *= 0.8; // 摩擦力
+                }
+
+                // 跳跃
+                if (keys[jumpKey] && !this.isJumping) {
+                    this.velocityY = -15;
+                    this.isJumping = true;
+                }
+
+                // 防御
+                this.isBlocking = keys[blockKey];
+
+                // 攻击
+                if ((keys[punchKey] || keys[kickKey]) && this.attackCooldown <= 0) {
+                    this.attack(keys[kickKey] ? 'kick' : 'punch');
+                }
+            }
+
+            applyPhysics() {
+                // 重力
+                this.velocityY += 0.8;
+                
+                // 地面碰撞
+                if (this.y + this.height >= canvas.height - 50) {
+                    this.y = canvas.height - 50 - this.height;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                }
+
+                // 边界限制
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+            }
+
+            updatePosition() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+            }
+
+            attack(type) {
+                this.isAttacking = true;
+                this.attackCooldown = 30;
+                
+                // 设置攻击范围
+                const attackRange = type === 'kick' ? 60 : 50;
+                const attackHeight = type === 'kick' ? 40 : 30;
+                
+                if (this.facingRight) {
+                    this.attackBox = {
+                        x: this.x + this.width,
+                        y: this.y + this.height / 2 - attackHeight / 2,
+                        width: attackRange,
+                        height: attackHeight
+                    };
+                } else {
+                    this.attackBox = {
+                        x: this.x - attackRange,
+                        y: this.y + this.height / 2 - attackHeight / 2,
+                        width: attackRange,
+                        height: attackHeight
+                    };
+                }
+
+                // 攻击伤害
+                setTimeout(() => {
+                    this.isAttacking = false;
+                    this.attackBox = { x: 0, y: 0, width: 0, height: 0 };
+                }, 200);
+            }
+
+            updateAttack() {
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                }
+            }
+
+            takeDamage(damage) {
+                if (!this.isBlocking) {
+                    this.health = Math.max(0, this.health - damage);
+                    this.stunned = true;
+                    this.stunTimer = 10;
+                    
+                    // 击退效果
+                    if (this.facingRight) {
+                        this.velocityX = -8;
+                    } else {
+                        this.velocityX = 8;
+                    }
+                } else {
+                    this.health = Math.max(0, this.health - damage * 0.2);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                // 玩家身体
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 防御状态
+                if (this.isBlocking) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fillRect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
+                }
+                
+                // 受伤闪烁
+                if (this.stunned && this.stunTimer % 4 < 2) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+                
+                // 攻击范围显示
+                if (this.isAttacking) {
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                    ctx.fillRect(this.attackBox.x, this.attackBox.y, this.attackBox.width, this.attackBox.height);
+                }
+                
+                // 面向指示
+                ctx.fillStyle = 'white';
+                const eyeX = this.facingRight ? this.x + this.width - 10 : this.x + 5;
+                ctx.fillRect(eyeX, this.y + 10, 5, 5);
+                
+                ctx.restore();
+            }
+        }
+
+        // 创建玩家
+        const player1 = new Player(150, 300, '#4A90E2', {
+            left: 'a',
+            right: 'd',
+            jump: 'w',
+            block: 's',
+            punch: 'j',
+            kick: 'k'
+        });
+
+        const player2 = new Player(650, 300, '#E74C3C', {
+            left: 'ArrowLeft',
+            right: 'ArrowRight',
+            jump: 'ArrowUp',
+            block: 'ArrowDown',
+            punch: '1',
+            kick: '2'
+        });
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.key] = false;
+        });
+
+        // 触摸控制
+        function startAction(player, action) {
+            const keyMap = {
+                player1: { left: 'a', right: 'd', jump: 'w', block: 's', punch: 'j', kick: 'k' },
+                player2: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'ArrowUp', block: 'ArrowDown', punch: '1', kick: '2' }
+            };
+            keys[keyMap[player][action]] = true;
+        }
+
+        function stopAction(player, action) {
+            const keyMap = {
+                player1: { left: 'a', right: 'd', jump: 'w', block: 's', punch: 'j', kick: 'k' },
+                player2: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'ArrowUp', block: 'ArrowDown', punch: '1', kick: '2' }
+            };
+            keys[keyMap[player][action]] = false;
+        }
+
+        // 碰撞检测
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // 更新血条
+        function updateHealthBars() {
+            const player1Health = document.getElementById('player1Health');
+            const player2Health = document.getElementById('player2Health');
+            
+            player1Health.style.width = (player1.health / player1.maxHealth * 100) + '%';
+            player2Health.style.width = (player2.health / player2.maxHealth * 100) + '%';
+        }
+
+        // 游戏结束
+        function checkGameOver() {
+            if (player1.health <= 0 || player2.health <= 0) {
+                gameRunning = false;
+                const modal = document.getElementById('gameOverModal');
+                const winnerText = document.getElementById('winnerText');
+                
+                if (player1.health <= 0) {
+                    winnerText.textContent = '玩家2 获胜！';
+                } else {
+                    winnerText.textContent = '玩家1 获胜！';
+                }
+                
+                modal.classList.add('show');
+                clearInterval(gameLoop);
+            }
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            player1.health = 100;
+            player2.health = 100;
+            player1.x = 150;
+            player1.y = 300;
+            player2.x = 650;
+            player2.y = 300;
+            player1.velocityX = 0;
+            player1.velocityY = 0;
+            player2.velocityX = 0;
+            player2.velocityY = 0;
+            player1.stunned = false;
+            player2.stunned = false;
+            
+            gameRunning = true;
+            document.getElementById('gameOverModal').classList.remove('show');
+            startGameLoop();
+        }
+
+        // 游戏循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.7, '#32CD32');
+            gradient.addColorStop(1, '#228B22');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制地面
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            
+            // 更新玩家
+            player1.update();
+            player2.update();
+            
+            // 检查攻击碰撞
+            if (player1.isAttacking && checkCollision(player1.attackBox, player2)) {
+                player2.takeDamage(15);
+            }
+            if (player2.isAttacking && checkCollision(player2.attackBox, player1)) {
+                player1.takeDamage(15);
+            }
+            
+            // 绘制玩家
+            player1.draw();
+            player2.draw();
+            
+            // 更新UI
+            updateHealthBars();
+            checkGameOver();
+        }
+
+        // 开始游戏
+        function startGameLoop() {
+            gameLoop = setInterval(gameLoop, 1000 / 60); // 60 FPS
+        }
+
+        // 初始化游戏
+        startGameLoop();
+    </script>
+</body>
+</html>
